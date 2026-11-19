@@ -1,72 +1,29 @@
-# Simulation Flow
+# 224 Gb/s simulation flow
 
-For current commands and result folders, start with [the README](../README.md).
-`main_224` now uses the imported friend channel and saves the suite under
-`results/224G/`. The current 400G confirmation sequence is
-`run_400G_verification`, followed by the CP and training verification scripts.
-Those results are stored under `results/400G/verification/`.
-Exploratory sweep results and figures are under `results/400G/sweeps/`.
-The older exploratory sweep remains available, but is not the current
-independent 400G confirmation. See [validation](validation.md) for the distinction.
+Run `main_224` from the project root. It adds its processing folders, obtains all
+settings from `config_224G`, creates the output folders, and runs Tests 1-6.
+Only base MATLAB is required.
 
-## Signal chain (per lane, x2 for the 2x2 MIMO link)
+## Signal chain
 
-```
-Random bits (tx/generate_bits.m)
-  -> 64-QAM modulate (tx/qam_modulate.m)
-  -> TX de-emphasis / power loading (impairments/tx_deemphasis.m)
-  -> OFDM mapping + IDFT + cyclic prefix (tx/ofdm_modulate.m)
-  -> serialize
-  -> DAC: RMS normalize -> clip -> jitter -> quantize (tx/dac_model.m,
-     impairments/clipping_model.m, impairments/jitter_model.m,
-     impairments/quantization_model.m)
-  -> 2x2 MIMO channel: main + FEXT convolution (channel/mimo_channel.m,
-     channel/main_channel.m, channel/fext_channel.m)
-  -> RX input random noise (channel/add_noise.m)
-  -> ADC: VGA -> clip -> jitter -> quantize (rx/adc_model.m)
-  -> de-serialize into OFDM symbol blocks
-  -> CP removal + DFT (rx/ofdm_demodulate.m)
-  -> 2x2 MIMO frequency-domain equalization (mimo/mimo_fde.m,
-     mimo/fext_cancellation.m), using a channel estimate from CHEST
-     (rx/estimate_mimo_channel.m, rx/channel_estimation.m)
-  -> QAM demodulate (rx/qam_demodulate.m)
-  -> BER / SER / EVM (analysis/calculate_*.m)
-```
+Bits -> Gray-coded 64-QAM -> TX per-tone de-emphasis -> Hermitian OFDM IFFT
+-> cyclic prefix -> DAC -> THRU/FEXT convolution -> RX noise/VGA/ADC
+-> remove cyclic prefix -> FFT -> equalization -> QAM decisions -> BER/SER/EVM.
 
-This entire chain (excluding bit generation/demod/scoring) is implemented once, in
-`experiments/link_forward_pass.m`, and reused for BOTH the CHEST pilot phase and the data-symbol phase --
-exactly like real hardware, where pilots and data traverse the identical analog/DSP path. This is what lets
-the channel estimate correctly absorb de-emphasis, VGA gain, and channel effects together (see
-`docs/assumptions.md`, "Why CHEST must use the same pipeline as data").
+Pilot training uses the same `link_forward_pass` function as data so it sees
+the same channel and hardware model. `calibrate_link_gains` shares fixed gain
+settings between training and data. Noise placement depends on whether a fixed
+noise level or an explicit SNR override is requested; see `assumptions.md`.
 
-## Orchestration
+## Calls from the entry point
 
-- `experiments/run_224G_test.m` -- single-configuration engine: generates data, obtains a channel estimate
-  (CHEST, or an oracle/genie channel when impairments are disabled), equalizes, demodulates, scores.
-- `experiments/experiment_ideal_channel.m` -- TEST 1 (symbol-level AWGN sanity check).
-- `experiments/experiment_fext.m` -- TESTS 2-4 (channel / MIMO-FEXT architecture, no converter impairments).
-- `experiments/experiment_224G.m` -- TESTS 5-6 (full impairments, minimal vs. converged CHEST) + headline
-  figures for the supervisor meeting.
-- `experiments/experiment_400G_sweep.m` -- the parameterized 400G scaling investigation (Part 7-8).
-- `main_224.m` -- runs TESTS 1-6 in order and saves all results/figures.
-- `scripts/400G/run_400G_verification.m` -- primary 400G screening and independent confirmations.
-- `scripts/400G/run_400G_cp_verification.m` -- 400G cyclic-prefix sensitivity and confirmation.
-- `scripts/400G/run_400G_training_verification.m` -- 400G training-averaging confirmation.
-- `scripts/400G/run_400G_sweep.m` -- exploratory 400G parameter sweep and figures.
-- `scripts/224G/run_friend_channel_optimization.m` -- fixed-clipping 224G confirmation study.
-- `tests/validate_phase1.m` -- functional checks, also called by the 400G verification.
+- `experiment_ideal_channel`: Test 1, isolated QAM AWGN reference.
+- `experiment_fext`: Tests 2-4, known channels without converter impairments.
+- `experiment_224G`: Tests 5-6, full impairments and pilot estimation, followed
+  by original/+20 dB FEXT SNR sweeps on the existing BER/SER figures.
+- `run_224G_test`: shared data generation, training, propagation, equalization,
+  and scoring. It saves both cancellation modes from the same received data.
 
-The project root contains only `main_224.m` as a MATLAB script. Earlier
-diagnostic launchers were retired; existing historical result files remain.
-
-## Configuration
-
-Default parameters live in `config/config_224G.m` and `config/config_400G.m`.
-Experiment runners explicitly override settings for individual investigations.
-Processing blocks receive these settings through `cfg`; inspect the entry
-script as well as the configuration when identifying the conditions of a run.
-
-## Reproducibility
-
-Every random draw (bit generation, AWGN, jitter) is seeded (`cfg.sim.rng_seed`, plus per-call offsets), so
-re-running any script produces identical results.
+All generated images and `results_224G.mat` stay under `results/224G/`.
+The optional `analysis/redraw_224G_figures.m` redraws selected saved-sample
+comparisons; it does not run the channel again or regenerate every figure.

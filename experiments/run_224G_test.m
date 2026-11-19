@@ -6,7 +6,7 @@ function result = run_224G_test(cfg, test_opts)
 %shared engine behind experiments/experiment_*.m (TESTs 1-6) and main_224.m.
 %
 % Inputs:
-%   cfg       - config struct (config_224G / config_400G)
+%   cfg       - config struct (config_224G)
 %   test_opts - struct, all fields optional:
 %       .enable_fext         (default true)  - physical FEXT coupling present
 %       .apply_impairments   (default true)  - DAC/ADC clip+quant+jitter+noise
@@ -14,7 +14,7 @@ function result = run_224G_test(cfg, test_opts)
 %       .fde_mode            (default 'cancel') - 'cancel' or 'naive' (see mimo_fde.m)
 %       .snr_override_dB     (default [])    - forces a specific RX SNR
 %       .use_genie_channel   (default false) - if true, skip CHEST and use the
-%                            EXACT synthetic channel's per-subcarrier response
+%                            EXACT imported channel's per-subcarrier response
 %                            (oracle equalizer) instead of the pilot-estimated
 %                            one -- useful to isolate architecture (FEXT
 %                            cancellation math) from CHEST estimation error.
@@ -52,7 +52,7 @@ if o.use_genie_channel && o.apply_impairments
 end
 
 Nused = cfg.ofdm.N_used; % 511
-bps = cfg.mod.bits_per_sym; % 8
+bps = cfg.mod.bits_per_sym; % 6
 Nsym = cfg.sim.num_ofdm_symbols; % 2000
 M = cfg.mod.order; % 64
 

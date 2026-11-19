@@ -83,13 +83,15 @@ Every row below is tagged:
 | MIMO configuration | 2×2 (two TX lanes, two RX lanes), a single FEXT aggressor (one victim + one aggressor lane) | A | [FEXT] p.83, Sec. III, Fig. 5 |
 | Channel matrix structure | H(k) = [[H13(k), H23(k)], [H14(k), H24(k)]], where H13/H24 are the two main (THRU) responses and H23/H14 are the two FEXT (crosstalk) responses | A | [FEXT] eqs. (2), (4), p.83 |
 
-Because the exact measured S-parameters are not reproduced in the text of either paper, `channel/main_channel.m` and
-`channel/fext_channel.m` implement a **parameterized, configurable synthetic channel model** (skin-effect + dielectric
-loss style frequency-dependent attenuation for the main channel, and a separately-scaled weak-at-low-frequency /
-stronger-at-high-frequency FEXT coupling model) whose free parameters are tuned so that the two headline anchor points
-above (−23 dB @ 40 GHz main-channel loss, and ≈28 dB main-to-FEXT ratio at ≈3.7 GHz) are matched. This is flagged
-throughout the code and in `docs/assumptions.md` and `docs/open_questions.md` as an assumption, not a reproduction of
-the paper's exact measured channel.
+The active implementation imports IEEE 802.3ck Channel1
+`Asic_Mezz_Retimer_L10_Thru.s4p` and `Asic_Mezz_Retimer_L10_FEXT1.s4p`.
+The archive URL and hashes are in `channel/data/ieee_8023ck_c2c/provenance.json`.
+The channel is not established as the exact response behind the paper's plot.
+The +20 dB FEXT curves apply an explicitly labeled stress gain to that coupling.
+
+The fixed-noise baseline retains 1.8 mV after VGA, whereas the table above
+records the paper's RX-input specification. SNR sweeps override amplitude and
+inject noise before VGA. See `docs/assumptions.md` for this distinction.
 
 ## 7. Channel estimation (CHEST)
 
@@ -122,8 +124,7 @@ the paper's exact measured channel.
 
 - Exact channel S-parameters / transfer function tables (only plots + external tool reference) - **(C)**
 - Semiconductor process node for the 224 Gb/s system-level study (no node is stated for the architectural/behavioral
-  model in either paper) - **(C)**. Do not assume 22 nm for the paper's own study; 22 nm is only the *candidate future
-  implementation node* the user has access to (see `docs/22nm_mapping.md`).
+  model in either paper) - **(C)**. No transistor process is simulated here.
 - Random-number-generator seed / exact bit sequence used in the paper's own simulations - **(C)**
 - Number of OFDM symbols for FEXT headline BER/SER is not stated; DSE explicitly simulates 48 million input bits (p.143). These are separate studies.
 - Exact CHEST pilot sequence values S_k beyond "known QAM values with equal magnitude, opposite/same polarity" - **(C)**
@@ -135,5 +136,5 @@ the paper's exact measured channel.
   sources - assumed independent identically distributed (i.i.d.) Gaussian jitter with the given RMS UI, applied
   independently at TX (DAC) and RX (ADC) - **(C)**
 
-See `docs/assumptions.md` and `docs/open_questions.md` for the full, non-duplicated list with implementation
+See `docs/assumptions.md` for the full, non-duplicated list with implementation
 implications.

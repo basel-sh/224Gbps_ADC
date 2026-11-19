@@ -1,11 +1,13 @@
 % Checks that address reproducibility failures found in the paper audit.
-addpath(genpath(fileparts(fileparts(mfilename('fullpath')))));
-for q=[4 16 64 256]
- c=config_400G(struct('mod',struct('order',q)));
- assert(abs(c.achieved_data_rate_bps/400e9-1)<1e-12);
+root = fileparts(fileparts(mfilename('fullpath')));
+addpath(root);
+folders = {'config','tx','channel','impairments','rx','mimo','experiments','analysis'};
+for k = 1:numel(folders)
+    addpath(fullfile(root, folders{k}));
 end
-c=config_400G(struct('ofdm',struct('N_FFT',2048,'N_CP',16)));
-assert(abs(c.achieved_data_rate_bps/400e9-1)<1e-12);
+c = config_224G();
+rate = c.ofdm.N_used*c.mod.bits_per_sym*c.fs/(c.ofdm.N_FFT+c.ofdm.N_CP);
+assert(abs(rate/223.5625e9-1)<1e-12);
 c=config_224G();c.sim.num_ofdm_symbols=20;
 b=generate_bits(c.ofdm.N_used*6*20,100);
 X=reshape(qam_modulate(b,64),c.ofdm.N_used,20);
@@ -29,4 +31,4 @@ S=exp(1j*(1:10)');h13=0.7+0.2j;h24=0.6-0.1j;h23=0.1j;h14=-0.03j;
  (h13+h23)*S,(h14+h24)*S);
 assert(max(abs(a-h13))<1e-12 && max(abs(b2-h23))<1e-12);
 assert(max(abs(d-h14))<1e-12 && max(abs(e-h24))<1e-12);
-fprintf('PHASE1_CHECKS_PASS: rate, QAM/OFDM, shared gains, independent jitter, CHEST algebra\n');
+fprintf('224G_CHECKS_PASS: rate, QAM/OFDM, shared gains, independent jitter, CHEST algebra\n');

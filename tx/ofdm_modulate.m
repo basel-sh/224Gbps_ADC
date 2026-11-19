@@ -7,7 +7,7 @@ function [tx_time, tx_freq_full] = ofdm_modulate(qam_syms, cfg)
 % Inputs:
 %   qam_syms - N_used x N_symbols matrix of complex QAM symbols (one column
 %              per OFDM symbol), N_used = cfg.ofdm.N_used = N_FFT/2 - 1
-%   cfg      - config struct (config_224G / config_400G) with fields
+%   cfg      - config struct (config_224G) with fields
 %              cfg.ofdm.N_FFT, cfg.ofdm.N_CP, cfg.ofdm.N_used
 %
 % Outputs:

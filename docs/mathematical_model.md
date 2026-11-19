@@ -53,9 +53,10 @@ At the receiver, the first N_CP samples of each received block are discarded bef
 the channel's impulse response fits within N_CP samples, this converts the linear convolution with the
 channel into a per-subcarrier *circular* multiplication -- i.e. the entire reason per-subcarrier
 single-tap equalization works. [DSE] Sec. II-B / III-C studies exactly what happens when the channel's
-significant impulse response exceeds N_CP (residual ISI); this project's channel model (Section 6 below)
-is deliberately built with a configurable number of FIR taps so that CP-length experiments are meaningful
-(see `experiments/experiment_400G_sweep.m`, FFT-size/CP axis).
+significant impulse response exceeds the prefix (residual ISI). The active model
+retains a 512-tap imported response and an 8-sample CP, leaving some residual
+interference. Exact circular-convolution equivalence requires channel memory
+(length minus one) no greater than N_CP.
 
 ## 4. TX de-emphasis / power loading (`impairments/tx_deemphasis.m`)
 
@@ -84,40 +85,25 @@ R_clip = beta / A_RMS   (dB value given by the paper; beta = one-sided full-scal
 its own target ("VGA amplifies the input signal so the ADC uses its input full-scale", [FEXT] p.84).
 
 ## 6. Channel model: main (THRU) and FEXT (`channel/main_channel.m`, `channel/fext_channel.m`,
-`channel/minimum_phase_from_mag_db.m`)
+`channel/touchstone_channel.m`)
 
-**NOT SPECIFIED IN REFERENCE PAPER** (see `config/224G_paper_specs.md` Sec. 6 and `docs/assumptions.md`):
-the exact measured S-parameters behind [FEXT] Fig. 8 are not published as numbers. A parameterized
-skin-effect + dielectric-loss magnitude model is used:
+The active path imports differential THRU and FEXT transfer functions from the
+included IEEE 802.3ck Channel1 Touchstone files. `touchstone_channel` converts
+the four-port data to a differential transfer function, interpolates onto the
+FFT grid, removes common bulk delay, and retains 512 impulse-response samples.
+No synthetic attenuation model is used in the active project.
 
-```
-loss_main_dB(f) = k_skin*sqrt(f) + k_diel*f
-```
-
-with `k_skin`, `k_diel` calibrated so `loss_main_dB(40 GHz) = 23 dB` (the paper's stated anchor, split
-50/50 between the two terms by default, `cfg.channel.skin_dielectric_split`). The FEXT channel is defined
-relative to the main channel via a main-to-FEXT ratio law:
+The symmetric two-lane model is:
 
 ```
-ratio_dB(f) = max( R_ref - slope*log10(f/f_ref), floor_dB )
-loss_fext_dB(f) = loss_main_dB(f) + ratio_dB(f)
+y1 = h_main * x1 + h_fext * x2
+y2 = h_fext * x1 + h_main * x2
 ```
 
-calibrated so `ratio_dB(3.7 GHz) = 28 dB` (the paper's stated anchor at sub-channel k=50). Given only a
-magnitude spectrum, a causal, stable **minimum-phase** impulse response is reconstructed via the standard
-real-cepstrum (homomorphic) method (Oppenheim & Schafer): compute the real cepstrum from the log-magnitude
-spectrum, apply the minimum-phase window, and take the real IFFT. This is a standard DSP technique, not a
-paper-specific formula, chosen because neither paper publishes phase/group-delay data either. The 2x2
-channel matrix (`channel/mimo_channel.m`) is built per [FEXT] eq. (2):
-
-```
-Y1(k) = H13(k)*X1(k) + H23(k)*X2(k)
-Y2(k) = H14(k)*X1(k) + H24(k)*X2(k)
-```
-
-with H13 = H24 = main-channel response (assumed identical on both lanes) and H23 = H14 = FEXT response
-(assumed symmetric coupling) -- both documented assumptions since the paper does not state whether the two
-main (or two FEXT) responses are identical.
+Here * denotes linear convolution. A stress gain D dB changes only
+`h_fext` to `10^(D/20)*h_fext`, consistently in pilots and data.
+Lane symmetry is an assumption, and the imported channel is not established
+as the exact measured channel from the paper.
 
 ## 7. 2x2 MIMO channel estimation (`rx/channel_estimation.m`, `rx/estimate_mimo_channel.m`)
 
@@ -132,9 +118,9 @@ H14 = (Y2^(2) + Y2^(1)) / (2*Sk)      H24 = (Y2^(2) - Y2^(1)) / (2*Sk)
 ```
 
 Because of random noise, the raw per-cycle estimate is repeated for L cycles (paper recommends L > 100,
-[FEXT] Fig. 9) and averaged: `H_avg = mean(H_raw, over L cycles)`. The pilot sequence Sk itself (a fixed,
-known +/-1 sequence, not the paper's exact un-published sequence) is a documented assumption (Section 10 of
-`config/224G_paper_specs.md`).
+[FEXT] Fig. 9) and averaged in the inverse-coefficient domain: `P_avg = mean(inv(H_raw), over L cycles)`.
+The known equal-I/Q QPSK pilots vary between cycles using reproducible seeds;
+their exact sequence is a model assumption.
 
 ## 8. 2x2 MIMO frequency-domain equalization (`mimo/fext_cancellation.m`, `mimo/mimo_fde.m`)
 

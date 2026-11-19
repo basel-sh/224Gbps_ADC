@@ -33,6 +33,8 @@ palette = [0 0.447 0.741; 0.85 0.325 0.098; 0.10 0.60 0.40];
 has_zero_floor = false;
 for c = 1:numel(y_cell)
     m = markers{mod(c-1, numel(markers))+1};
+    % Paired cancellation curves retain their colors; stress levels use dashes.
+    if c > 2, m = strrep(m, '-', '--'); end
     label = lower(legend_labels{c});
     color = palette(mod(c-1,size(palette,1))+1,:);
     if contains(label, 'without'), color = palette(2,:);

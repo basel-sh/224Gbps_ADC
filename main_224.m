@@ -10,23 +10,15 @@
 
 close all;
 proj_root = fileparts(mfilename('fullpath'));
-addpath(genpath(proj_root));
+source_folders = {'config','tx','channel','impairments','rx','mimo','experiments','analysis'};
+addpath(proj_root);
+for folder_idx = 1:numel(source_folders)
+    addpath(fullfile(proj_root, source_folders{folder_idx}));
+end
 
 fprintf('=== 224 Gb/s MIMO-OFDM baseline: full validation suite ===\n\n');
 
 cfg = config_224G();
-
-chan_dir = fullfile(proj_root, 'channel', 'data', 'ieee_8023ck_c2c', 'Channel1');
-prefix   = 'Asic_Mezz_Retimer_L10';
-cfg.channel.type = 'touchstone';
-cfg.noise.reference = 'adc_input';
-cfg.channel.touchstone = struct( ...
-    'thru_file', fullfile(chan_dir, [prefix '_Thru.s4p']), ...
-    'fext_file', fullfile(chan_dir, [prefix '_FEXT1.s4p']));
-
-% Current 224G baseline outputs; older synthetic runs are under results/history/.
-cfg.results_dir = fullfile(proj_root, 'results', '224G');
-cfg.fig_dir = fullfile(cfg.results_dir, 'figures');
 
 if ~exist(cfg.results_dir, 'dir'), mkdir(cfg.results_dir); end
 if ~exist(cfg.fig_dir, 'dir'), mkdir(cfg.fig_dir); end
@@ -48,7 +40,7 @@ fprintf('\nTotal simulation time: %.1f s\n', elapsed);
 results = struct('test1', res1, 'test234', res234, 'test56', res56, 'cfg', cfg);
 save(fullfile(cfg.results_dir, 'results_224G.mat'), 'results');
 
-fprintf('\n=== SUMMARY (see docs/friend_channel_reproduction.md for run details) ===\n');
+fprintf('\n=== SUMMARY (see docs/validation.md for interpretation) ===\n');
 fprintf('%-45s %-15s %-15s\n', 'Metric', 'This model', 'Paper [FEXT]');
 fprintf('%-45s %-15.3e %-15s\n', 'SER with FEXT cancellation', res56.test6.ser, '1.4e-5');
 fprintf('%-45s %-15.3e %-15s\n', 'SER without FEXT cancellation', res56.test6.ser_other_mode, '4e-1');
@@ -56,4 +48,3 @@ fprintf('%-45s %-15.3e %-15s\n', 'Pre-FEC BER with FEXT cancellation', res56.tes
 fprintf('\nAll figures saved under: %s\n', cfg.fig_dir);
 fprintf('Results struct saved to: %s\n', fullfile(cfg.results_dir, 'results_224G.mat'));
 fprintf('\nPhysical channel: IEEE 802.3ck Channel1 Asic_Mezz_Retimer_L10 THRU + FEXT1.\n');
-fprintf('This reproduces the channel paths specified in the pulled friend script.\n');

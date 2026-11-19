@@ -1,37 +1,31 @@
-# Assumptions behind the current results
+# Assumptions of the 224 Gb/s model
 
-Updated 10 October 2026. We want each result to be understandable from its conditions, rather than treating a good BER as proof that every block is realistic.
+The active configuration is `config/config_224G.m`. Paper-stated values are
+separated from model choices in `config/224G_paper_specs.md`.
 
-## Common model choices
-
-The model represents two lanes with frequency-domain MIMO equalization and physical channel convolution. The current confirmation uses real OFDM, 1024-point FFT, 8-sample CP, and 511 data tones. QAM has Gray-coded decisions. Converter quantization is ideal apart from the configured clipping and timing impairments.
-
-DAC and ADC clipping remain 12.6 and 13.4 dB. The present interpretation uses mean absolute magnitude. That reference must be reconciled with the papers' clipping conventions. Full scales remain 1.0 and 0.5 Vpp.
-
-Training and data share calibrated gains. TX/RX jitter draws are independent, and the investigated estimator averages inverse equalizer coefficients. These implementation checks improve consistency but do not validate the analog models against hardware.
-
-## The 224G confirmation
-
-The current 224G entry uses public Channel1 THRU/FEXT1 files and 1.8 mV noise after VGA. Its fixed-clipping confirmation uses L1000. The paper's described RX-input noise belongs before VGA, and the available channel does not match the paper's plotted coupling.
-
-We cannot assume that the friend code, our merged workspace, and the paper are equivalent experiments. See [the reproduction notes](friend_channel_reproduction.md) for the measured differences.
-
-## The passing 400G candidate
-
-The 64-QAM candidate uses a synthetic channel with a 5 dB loss anchor at 40 GHz, 0.3 mV noise before VGA, 22.282 fs RMS jitter for each independent TX/RX process, ideal 8-bit converters, and -3.5 to 0 dB loading. It assumes the full channel shape and lane symmetry, not just that one loss value.
-
-The synthetic response is not a measurement of an approved interconnect. Converter code resolution is not ENOB. The spectral-linear jitter model is a first-order waveform-derivative approximation; alternative-model sensitivity is useful, but neither model is a measured clock or aperture characterization.
-
-These assumptions are why we describe the result as conditional behavioral feasibility. They must be replaced or supported by measured channel, converter, clock, and AFE data before hardware approval.
-
-## Rate, overhead, and confidence
-
-The reported 400G is gross per lane. FEC is not implemented. The example of two training symbols per 200 data symbols is an overhead budget, not a demonstrated tracking loop. A 0.94 FEC code rate is an illustration, not a selected code.
-
-Nominal 95% error bounds assume independent Bernoulli decisions. OFDM decisions and shared estimates can be correlated. The bounds do not cover physical model uncertainty or PVT variation.
-
-## What the model does not yet establish
-
-We have no selected PDK, extracted layout, transistor implementation, fixed-point timing closure, or validated transceiver power/area result. A smaller process is an option to study, not an automatic consequence of the MATLAB numbers.
-
-Read [validation](validation.md) for the current counts and [open questions](open_questions.md) for the next evidence to obtain. The earlier assumptions are retained in [history](history/2026-10-07_assumptions.md).
+- The channel uses the included IEEE 802.3ck Channel1 THRU/FEXT1 data. It is not
+  established as the exact channel from the paper. Two identical main paths
+  and symmetric coupling from one neighboring lane are assumed.
+- Channel processing retains 512 FIR taps on a 4096-point reconstruction grid,
+  removes common bulk delay, and places the main cursor at index 2 (zero based).
+  Physical time-domain convolution is used. CP8 does not cover the entire
+  response, so residual inter-symbol/intercarrier interference can remain.
+- The fixed-noise baseline injects 1.8 mV RMS Gaussian white noise after VGA.
+  The paper describes RX-input noise; identical RMS values at different
+  injection points are not equivalent. SNR sweeps inject noise before VGA
+  and adjust its amplitude from the channel-output waveform power.
+- DAC/ADC clipping ratios remain 12.6/13.4 dB using the retained mean-absolute
+  interpretation. Full scales are 1.0/0.5 Vpp. Converters are ideal uniform
+  7-bit quantizers; this is not a measured ENOB specification.
+- TX and RX jitter are independently seeded at 1% UI RMS using UI=1/Fs.
+  The retained interpolation model is behavioral, not a measured clock model.
+- Training and data share calibrated gains. CHEST uses opposite/same polarity
+  pilot pairs and averages inverse coefficients. L=1 and L=200 distinguish
+  Tests 5 and 6. The data run does not interleave periodic tracking pilots.
+- Two thousand data OFDM symbols are generated per lane with fixed seeds.
+  Results are finite observations; zero errors is not proof of zero BER/SER.
+- The +20 dB FEXT sweep multiplies only the imported coupling impulse response
+  by ten before both training and data propagation. It is an artificial
+  coupling stress test, not a second measured passive interconnect.
+- Reported gross rate excludes training and FEC overhead. No FEC or transistor
+  implementation is included.

@@ -1,5 +1,5 @@
 function fig = plot_channel_response(cfg, save_path)
-%PLOT_CHANNEL_RESPONSE  Plot the main (THRU) and FEXT synthetic channel
+%PLOT_CHANNEL_RESPONSE  Plot the imported main (THRU) and FEXT channel
 %magnitude responses vs. frequency, matching the style of [FEXT] Fig. 8.
 
 [h_main, main_info] = main_channel(cfg);
@@ -20,20 +20,9 @@ f_ir = (0:cfg.channel.ir_fft_len/2) * (cfg.fs/cfg.channel.ir_fft_len);
 fext_dB = 20*log10(abs(Hf(1:numel(f_ir))) + 1e-12);
 plot(f_ir/1e9, fext_dB, 'r--', 'LineWidth', 1.5, 'DisplayName', 'FEXT channel');
 
-% (xline() is not available in Octave; use a portable vertical line instead)
-yl = ylim();
-plot([1 1]*cfg.channel.main_loss_at_freq/1e9, yl, 'k:', 'LineWidth', 1, 'HandleVisibility', 'off');
-text(cfg.channel.main_loss_at_freq/1e9, yl(2), ...
-    sprintf('  %d dB @ %.0f GHz anchor', round(cfg.channel.main_loss_dB_at_f), cfg.channel.main_loss_at_freq/1e9), ...
-    'VerticalAlignment', 'top');
-
 xlabel('Frequency (GHz)');
 ylabel('Magnitude response (dB)');
-if isfield(cfg.channel, 'type') && strcmp(cfg.channel.type, 'touchstone')
-    title('Imported THRU and FEXT channel frequency response');
-else
-    title('Synthetic main and FEXT channel frequency response (parameterized model)');
-end
+title('Imported THRU and FEXT channel frequency response');
 legend('Location', 'best');
 xlim([0, cfg.fs/2/1e9]);
 

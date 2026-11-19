@@ -5,8 +5,12 @@ function figures = redraw_224G_figures(show_figures)
 % No Python, new random samples, or link simulation is used. main_224 calls
 % these same plotting functions during a fresh full simulation.
 if nargin < 1, show_figures = true; end
-root = fileparts(mfilename('fullpath'));
-addpath(genpath(root));
+root = fileparts(fileparts(mfilename('fullpath')));
+folders = {'config','tx','channel','impairments','rx','mimo','experiments','analysis'};
+addpath(root);
+for k = 1:numel(folders)
+    addpath(fullfile(root, folders{k}));
+end
 snapshot_path = fullfile(root,'results','224G','results_224G.mat');
 if ~exist(snapshot_path,'file')
     error('redraw_224G_figures:noResults','Run main_224 first to create results_224G.mat.');

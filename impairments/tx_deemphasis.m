@@ -14,10 +14,7 @@ function qam_syms_out = tx_deemphasis(qam_syms, cfg)
 %   qam_syms_out - same size, with per-row (per-sub-channel) linear gain
 %                  10^(gain_dB(k)/20) applied
 
-% The paper's de-emphasis law is defined over k=1..511 for N_FFT=1024. For a
-% general N_used (e.g. scaled 400G configs), deemphasis_gain_vector.m maps k
-% linearly onto the same [1, N_used] range so the SAME relative de-emphasis
-% SHAPE is preserved -- documented as a scaling assumption in docs/assumptions.md.
+% Apply the configured gain over the 511 usable subcarriers.
 gain_lin = deemphasis_gain_vector(cfg);
 
 qam_syms_out = qam_syms .* gain_lin;
